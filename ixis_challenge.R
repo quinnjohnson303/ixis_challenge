@@ -10,20 +10,20 @@ library(lubridate)
 sessions <- vroom("/Users/quinnjohnson/Downloads/DataAnalyst_Ecom_data_sessionCounts.csv")
 cart <- vroom("/Users/quinnjohnson/Downloads/DataAnalyst_Ecom_data_addsToCart.csv")
 
-#Just getting glimpse into what the data look like
+#Just getting glimpse into what the data looks like
 head(sessions)
 head(cart)
 
-#Checking variable types of the data
+#Checking variable types
 lapply(sessions, class)
-#Need to change dim_date to date format
+#Need to change dim_date to a date format, not character
 sessions$dim_date <- mdy(sessions$dim_date)
 
 #Creating sheet1 to get each permutation of months and devices and their respective metrics
 sheet1 <- sessions %>%
   #Separating the month from the date
   mutate(., month = month(dim_date)) %>%
-  #Separating year from the date in sessions
+  #Separating the year from the date
   mutate(., year = year(dim_date)) %>%
   #Grouping the data by month and device
   group_by(month, year, dim_deviceCategory) %>%
@@ -43,7 +43,7 @@ lapply(sessions, class)
 #Need to change dim_date to date format
 sessions$dim_date <- mdy(sessions$dim_date)
 
-#Retrieving what the two most recents months of data are
+#Retrieving two most recent months just for reference
 cart[c(nrow(cart)-1,nrow(cart)),1:2]
 #5/2013-6/2013
 
@@ -51,7 +51,7 @@ cart[c(nrow(cart)-1,nrow(cart)),1:2]
 sessions <- sessions %>%
   #Separating the month from the date
   mutate(., month = month(dim_date)) %>%
-  #Separating year from the date in sessions
+  #Separating the year from the date
   mutate(., year = year(dim_date))
 
 #Changing cart column names to be the same as sessions column names
@@ -60,12 +60,13 @@ colnames(cart) <- c("year", "month", "addsToCart")
 #Joining both dataframes into one using year and month as the matches
 full <- full_join(cart, sessions, by = c("year","month"))
 
-#Creating sheet 2 to get month over month comparisons for every month initially
+#Creating sheet 2 to get month over month comparisons for every month
+#Can later whittle it down to desired time period
 sheet2 <- full %>%
   #Grouping by month and year
   group_by(month, year) %>%
   #Get values for each month individually
-  #NOTE: '_rec' is short for 'recent'. Can also be thought of as the current month
+  #NOTE: '_rec' is short for 'recent'. Can also be thought of as the month listed in the row
   summarize(sessions_rec = sum(sessions), transactions_rec = sum(transactions), qty_rec = sum(QTY), 
             ecr_rec = sum(transactions)/sum(sessions), addsToCart_rec = mean(addsToCart)) %>%
   #Ordering data chronologically
@@ -87,8 +88,8 @@ sheet2 <- full %>%
   #Removing every row besides the last, as the most recent month is the only one we care about in this example
   slice(., nrow(.))
 
-#Creating a list of the dataframes we created
+#Creating a list of the dataframes we created and want to put in the xlsx file
 df_list <- list("monthDeviceAggr" = sheet1, "recentMonthComp" = sheet2)
 
-#Writing the dataframes as sheets in an xlsx file
+#Writing the dataframes as sheets in an xlsx file and saving to current working directory
 write.xlsx(df_list, "ixis_challenge.xlsx")
